@@ -1,8 +1,8 @@
-package com.financialblockchain.simulator.bank.api;
+package com.financialblockchain.simulator.bank.controller;
 
-import com.financialblockchain.simulator.bank.api.BankApiModels.OutgoingTransferRequest;
-import com.financialblockchain.simulator.bank.api.BankApiModels.TransferResponse;
-import com.financialblockchain.simulator.bank.domain.transfer.OutgoingTransferService;
+import com.financialblockchain.simulator.bank.dto.BankApiModels.OutgoingTransferRequest;
+import com.financialblockchain.simulator.bank.dto.BankApiModels.TransferResponse;
+import com.financialblockchain.simulator.bank.service.transfer.OutgoingTransferService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 외부 사용자가 은행 간 송금을 시작하고 진행 상태를 조회하는 HTTP 진입점이다. */
 @RestController
 @RequestMapping("/api/transfers")
 public class TransferController {

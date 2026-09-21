@@ -1,4 +1,4 @@
-package com.financialblockchain.simulator.bank.api;
+package com.financialblockchain.simulator.bank.dto;
 
 import com.financialblockchain.simulator.bank.domain.account.Account;
 import com.financialblockchain.simulator.bank.domain.ledger.LedgerEntry;
@@ -11,6 +11,10 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+/**
+ * 시뮬레이션 API에서 사용하는 요청·응답 모델 모음이다.
+ * 작은 PoC이므로 DTO를 기능별 파일로 과도하게 분리하지 않고 한곳에서 관리한다.
+ */
 public final class BankApiModels {
 
     private BankApiModels() {

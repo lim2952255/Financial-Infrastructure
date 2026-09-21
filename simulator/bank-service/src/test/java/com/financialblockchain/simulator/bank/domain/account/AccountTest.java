@@ -3,10 +3,11 @@ package com.financialblockchain.simulator.bank.domain.account;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.financialblockchain.simulator.bank.support.InsufficientBalanceException;
+import com.financialblockchain.simulator.bank.exception.InsufficientBalanceException;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 
+/** 외부 인프라 없이 계좌의 입금·출금 규칙만 검증한다. */
 class AccountTest {
 
     @Test

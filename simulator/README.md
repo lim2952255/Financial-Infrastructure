@@ -8,6 +8,23 @@ FinMate의 계정·원장 모델에서 필요한 부분만 가져온 은행 간 
 - `bank-b`: `mysql-b`만 접근, 기본 계좌 `B-2001`과 잔액 `500,000`
 - 로컬 포트: Bank A `8081`, Bank B `8082`
 
+## 프로젝트 구조
+
+FinMate처럼 역할별 최상위 패키지로 분리하되, 시뮬레이션에 필요하지 않은 인증·사용자·투자 도메인은 제외했다.
+
+```text
+bank/
+├── controller/   # 계좌·원장·송금 HTTP API와 예외 응답
+├── service/      # 계좌 업무, 로컬 원장 반영, 은행 간 송금 흐름
+├── domain/       # Account, LedgerEntry, OutgoingTransfer 엔티티와 상태 값
+├── repository/   # 엔티티별 Spring Data JPA 저장소
+├── dto/          # API 요청·응답 모델
+├── config/       # 은행별 환경설정, HTTP 클라이언트, 데모 데이터
+└── exception/    # 계좌·잔액·중복·장애 시뮬레이션 예외
+```
+
+송금 흐름을 이해하려면 `TransferController` → `OutgoingTransferService` → `LedgerPostingService` → `InternalTransferController` 순서로 읽는다.
+
 ## 실행
 
 먼저 예시 파일을 복사한 뒤 DB 계정, 비밀번호, 은행 ID, 데모 계좌를 원하는 값으로 변경한다.

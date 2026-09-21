@@ -1,6 +1,6 @@
 package com.financialblockchain.simulator.bank.domain.account;
 
-import com.financialblockchain.simulator.bank.support.InsufficientBalanceException;
+import com.financialblockchain.simulator.bank.exception.InsufficientBalanceException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -10,6 +10,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 
+/** 한 은행이 보유한 사용자 계좌와 현재 잔액을 표현하는 도메인 엔티티다. */
 @Entity
 @Table(
         name = "accounts",
@@ -57,6 +58,7 @@ public class Account {
 
     public void withdraw(BigDecimal amount) {
         requirePositive(amount);
+        // 단순 시뮬레이션에서는 마이너스 잔액을 허용하지 않는다.
         if (balance.compareTo(amount) < 0) {
             throw new InsufficientBalanceException(accountNumber, balance, amount);
         }

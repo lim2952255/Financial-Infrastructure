@@ -1,8 +1,8 @@
-package com.financialblockchain.simulator.bank.api;
+package com.financialblockchain.simulator.bank.controller;
 
-import com.financialblockchain.simulator.bank.api.BankApiModels.AccountResponse;
-import com.financialblockchain.simulator.bank.api.BankApiModels.CreateAccountRequest;
-import com.financialblockchain.simulator.bank.domain.account.AccountService;
+import com.financialblockchain.simulator.bank.dto.BankApiModels.AccountResponse;
+import com.financialblockchain.simulator.bank.dto.BankApiModels.CreateAccountRequest;
+import com.financialblockchain.simulator.bank.service.account.AccountService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 사용자가 시뮬레이션 계좌를 생성하고 현재 잔액을 조회하는 HTTP 진입점이다. */
 @RestController
 @RequestMapping("/api/accounts")
 public class AccountController {

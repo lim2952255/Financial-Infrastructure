@@ -1,15 +1,22 @@
-package com.financialblockchain.simulator.bank.domain.ledger;
+package com.financialblockchain.simulator.bank.service.ledger;
 
 import com.financialblockchain.simulator.bank.config.BankProperties;
 import com.financialblockchain.simulator.bank.domain.account.Account;
-import com.financialblockchain.simulator.bank.domain.account.AccountRepository;
-import com.financialblockchain.simulator.bank.support.AccountNotFoundException;
-import com.financialblockchain.simulator.bank.support.DuplicateTransactionException;
+import com.financialblockchain.simulator.bank.domain.ledger.LedgerEntry;
+import com.financialblockchain.simulator.bank.domain.ledger.LedgerEntryType;
+import com.financialblockchain.simulator.bank.exception.AccountNotFoundException;
+import com.financialblockchain.simulator.bank.exception.DuplicateTransactionException;
+import com.financialblockchain.simulator.bank.repository.account.AccountRepository;
+import com.financialblockchain.simulator.bank.repository.ledger.LedgerEntryRepository;
 import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 한 은행의 로컬 DB 안에서 잔액 변경과 원장 생성을 하나의 트랜잭션으로 처리한다.
+ * 이 트랜잭션은 상대 은행 DB까지 확장되지 않는다는 점이 시뮬레이션의 핵심이다.
+ */
 @Service
 public class LedgerPostingService {
 
@@ -35,6 +42,7 @@ public class LedgerPostingService {
             String counterpartyBankId,
             String counterpartyAccountNumber
     ) {
+        // 동일 거래의 출금 원장이 두 번 기록되는 것을 먼저 차단한다.
         rejectDuplicate(transactionId, LedgerEntryType.DEBIT);
         Account account = lockedAccount(accountNumber);
         BigDecimal balanceBefore = account.getBalance();
@@ -60,6 +68,7 @@ public class LedgerPostingService {
             String counterpartyBankId,
             String counterpartyAccountNumber
     ) {
+        // 상대 은행의 재시도나 중복 전달로 같은 입금이 두 번 반영되는 것을 차단한다.
         rejectDuplicate(transactionId, LedgerEntryType.CREDIT);
         Account account = lockedAccount(accountNumber);
         BigDecimal balanceBefore = account.getBalance();

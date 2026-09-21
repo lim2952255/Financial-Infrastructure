@@ -1,4 +1,5 @@
 services:
+  # Bank A가 단독으로 사용하는 데이터베이스다.
   mysql-a:
     image: mysql:8.4
     environment:
@@ -16,6 +17,7 @@ services:
       timeout: 3s
       retries: 20
 
+  # Bank B가 단독으로 사용하는 데이터베이스다.
   mysql-b:
     image: mysql:8.4
     environment:
@@ -33,6 +35,7 @@ services:
       timeout: 3s
       retries: 20
 
+  # 동일한 bank-service 이미지를 Bank A 설정으로 실행한다.
   bank-a:
     build:
       context: ./simulator/bank-service
@@ -54,6 +57,7 @@ services:
       mysql-a:
         condition: service_healthy
 
+  # 동일한 bank-service 이미지를 Bank B 설정으로 실행한다.
   bank-b:
     build:
       context: ./simulator/bank-service

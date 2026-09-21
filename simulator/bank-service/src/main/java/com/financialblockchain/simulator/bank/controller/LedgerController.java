@@ -1,8 +1,8 @@
-package com.financialblockchain.simulator.bank.api;
+package com.financialblockchain.simulator.bank.controller;
 
-import com.financialblockchain.simulator.bank.api.BankApiModels.LedgerEntryResponse;
-import com.financialblockchain.simulator.bank.api.BankApiModels.LedgerPostRequest;
-import com.financialblockchain.simulator.bank.domain.ledger.LedgerPostingService;
+import com.financialblockchain.simulator.bank.dto.BankApiModels.LedgerEntryResponse;
+import com.financialblockchain.simulator.bank.dto.BankApiModels.LedgerPostRequest;
+import com.financialblockchain.simulator.bank.service.ledger.LedgerPostingService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 출금·입금 원장을 직접 주입하고 거래 ID별 원장을 조회하는 시뮬레이션 API다. */
 @RestController
 @RequestMapping("/api/ledger")
 public class LedgerController {

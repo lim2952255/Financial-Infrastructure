@@ -1,11 +1,11 @@
-package com.financialblockchain.simulator.bank.api;
+package com.financialblockchain.simulator.bank.controller;
 
-import com.financialblockchain.simulator.bank.api.BankApiModels.ErrorResponse;
-import com.financialblockchain.simulator.bank.support.AccountNotFoundException;
-import com.financialblockchain.simulator.bank.support.DuplicateAccountException;
-import com.financialblockchain.simulator.bank.support.DuplicateTransactionException;
-import com.financialblockchain.simulator.bank.support.InsufficientBalanceException;
-import com.financialblockchain.simulator.bank.support.SimulatedCreditFailureException;
+import com.financialblockchain.simulator.bank.dto.BankApiModels.ErrorResponse;
+import com.financialblockchain.simulator.bank.exception.AccountNotFoundException;
+import com.financialblockchain.simulator.bank.exception.DuplicateAccountException;
+import com.financialblockchain.simulator.bank.exception.DuplicateTransactionException;
+import com.financialblockchain.simulator.bank.exception.InsufficientBalanceException;
+import com.financialblockchain.simulator.bank.exception.SimulatedCreditFailureException;
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/** 도메인과 서비스 계층의 예외를 시뮬레이션 API의 HTTP 오류 응답으로 변환한다. */
 @RestControllerAdvice
 public class ApiExceptionHandler {
 

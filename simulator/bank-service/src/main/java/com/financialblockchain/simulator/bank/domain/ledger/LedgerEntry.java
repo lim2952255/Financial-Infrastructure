@@ -12,6 +12,10 @@ import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+/**
+ * 한 번 반영된 출금 또는 입금의 감사 기록이다.
+ * 거래 당시의 변경 전후 잔액을 함께 남겨 기관 간 대사 시 차이를 추적할 수 있게 한다.
+ */
 @Entity
 @Table(
         name = "ledger_entries",
@@ -60,6 +64,7 @@ public class LedgerEntry {
     protected LedgerEntry() {
     }
 
+    // 원장 항목은 생성 이후 수정하지 않도록 생성 경로를 정적 팩토리로 제한한다.
     private LedgerEntry(
             String transactionId,
             String bankId,

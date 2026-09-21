@@ -1,10 +1,11 @@
 package com.financialblockchain.simulator.bank.config;
 
-import com.financialblockchain.simulator.bank.domain.account.AccountService;
+import com.financialblockchain.simulator.bank.service.account.AccountService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
+/** 시뮬레이션 옵션이 켜진 경우 은행별 기본 계좌를 한 번만 생성한다. */
 @Component
 public class DemoDataInitializer implements ApplicationRunner {
 

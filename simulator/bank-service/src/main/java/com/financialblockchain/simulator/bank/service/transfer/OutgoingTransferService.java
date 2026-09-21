@@ -1,13 +1,18 @@
-package com.financialblockchain.simulator.bank.domain.transfer;
+package com.financialblockchain.simulator.bank.service.transfer;
 
-import com.financialblockchain.simulator.bank.api.BankApiModels.IncomingCreditRequest;
+import com.financialblockchain.simulator.bank.dto.BankApiModels.IncomingCreditRequest;
 import com.financialblockchain.simulator.bank.config.BankProperties;
-import com.financialblockchain.simulator.bank.domain.ledger.LedgerPostingService;
+import com.financialblockchain.simulator.bank.domain.transfer.OutgoingTransfer;
+import com.financialblockchain.simulator.bank.service.ledger.LedgerPostingService;
 import java.math.BigDecimal;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+/**
+ * 출발 은행의 로컬 출금을 커밋한 뒤 상대 은행의 입금 API를 호출하는 송금 조정 서비스다.
+ * 의도적으로 분산 트랜잭션을 사용하지 않아 상대 은행 실패 시 부분 성공을 관찰할 수 있다.
+ */
 @Service
 public class OutgoingTransferService {
 
@@ -37,6 +42,7 @@ public class OutgoingTransferService {
             boolean simulateDestinationFailure
     ) {
         requireConfiguredCounterpart(destinationBankId);
+        // 송금 지시 자체를 먼저 기록해 이후 실패 원인을 추적할 수 있게 한다.
         lifecycleService.create(
                 transactionId,
                 sourceAccountNumber,
@@ -46,6 +52,7 @@ public class OutgoingTransferService {
         );
 
         try {
+            // 별도 서비스 빈의 @Transactional 메서드이므로 이 호출이 끝나면 출발 은행의 출금이 커밋된다.
             ledgerPostingService.postDebit(
                     transactionId,
                     sourceAccountNumber,
@@ -60,6 +67,7 @@ public class OutgoingTransferService {
         }
 
         try {
+            // 로컬 트랜잭션 밖의 HTTP 호출이므로 상대 은행 실패가 출발 은행의 출금을 롤백하지 못한다.
             counterpartRestClient.post()
                     .uri("/internal/transfers/credits")
                     .body(new IncomingCreditRequest(

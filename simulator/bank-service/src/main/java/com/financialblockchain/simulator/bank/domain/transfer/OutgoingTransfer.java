@@ -12,6 +12,7 @@ import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+/** 출발 은행 관점에서 은행 간 송금의 진행 상태와 실패 사유를 보관한다. */
 @Entity
 @Table(
         name = "outgoing_transfers",
@@ -100,6 +101,7 @@ public class OutgoingTransfer {
     }
 
     public void markCreditFailed(String reason) {
+        // 출금은 이미 커밋됐지만 상대 은행 입금이 실패한 부분 성공 상태다.
         changeStatus(TransferStatus.CREDIT_FAILED, reason);
     }
 
