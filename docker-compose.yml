@@ -1,0 +1,80 @@
+services:
+  mysql-a:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_A_DATABASE}
+      MYSQL_USER: ${MYSQL_A_USER}
+      MYSQL_PASSWORD: ${MYSQL_A_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_A_ROOT_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-a-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --user=\"$${MYSQL_USER}\" --password=\"$${MYSQL_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mysql-b:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_B_DATABASE}
+      MYSQL_USER: ${MYSQL_B_USER}
+      MYSQL_PASSWORD: ${MYSQL_B_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_B_ROOT_PASSWORD}
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql-b-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --user=\"$${MYSQL_USER}\" --password=\"$${MYSQL_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  bank-a:
+    build:
+      context: ./simulator/bank-service
+    image: financial-bank-simulator:local
+    environment:
+      BANK_ID: ${BANK_A_ID}
+      BANK_COUNTERPART_ID: ${BANK_B_ID}
+      BANK_COUNTERPART_BASE_URL: http://bank-b:8080
+      DB_URL: jdbc:mysql://mysql-a:3306/${MYSQL_A_DATABASE}
+      DB_USERNAME: ${MYSQL_A_USER}
+      DB_PASSWORD: ${MYSQL_A_PASSWORD}
+      SIMULATION_SEED_ENABLED: ${SIMULATION_SEED_ENABLED}
+      SIMULATION_ACCOUNT_NUMBER: ${BANK_A_ACCOUNT_NUMBER}
+      SIMULATION_ACCOUNT_HOLDER: ${BANK_A_ACCOUNT_HOLDER}
+      SIMULATION_OPENING_BALANCE: ${BANK_A_OPENING_BALANCE}
+    ports:
+      - "8081:8080"
+    depends_on:
+      mysql-a:
+        condition: service_healthy
+
+  bank-b:
+    build:
+      context: ./simulator/bank-service
+    image: financial-bank-simulator:local
+    environment:
+      BANK_ID: ${BANK_B_ID}
+      BANK_COUNTERPART_ID: ${BANK_A_ID}
+      BANK_COUNTERPART_BASE_URL: http://bank-a:8080
+      DB_URL: jdbc:mysql://mysql-b:3306/${MYSQL_B_DATABASE}
+      DB_USERNAME: ${MYSQL_B_USER}
+      DB_PASSWORD: ${MYSQL_B_PASSWORD}
+      SIMULATION_SEED_ENABLED: ${SIMULATION_SEED_ENABLED}
+      SIMULATION_ACCOUNT_NUMBER: ${BANK_B_ACCOUNT_NUMBER}
+      SIMULATION_ACCOUNT_HOLDER: ${BANK_B_ACCOUNT_HOLDER}
+      SIMULATION_OPENING_BALANCE: ${BANK_B_OPENING_BALANCE}
+    ports:
+      - "8082:8080"
+    depends_on:
+      mysql-b:
+        condition: service_healthy
+
+volumes:
+  mysql-a-data:
+  mysql-b-data:

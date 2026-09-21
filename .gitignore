@@ -1,0 +1,5 @@
+simulator/**/.gradle/
+simulator/**/build/
+simulator/**/.idea/
+simulator/**/*.iml
+.env

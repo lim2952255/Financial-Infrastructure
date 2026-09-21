@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: bank-service
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+server:
+  port: ${SERVER_PORT:8080}
+
+bank:
+  id: ${BANK_ID}
+  counterpart-id: ${BANK_COUNTERPART_ID}
+  counterpart-base-url: ${BANK_COUNTERPART_BASE_URL}
+
+simulation:
+  seed:
+    enabled: ${SIMULATION_SEED_ENABLED:false}
+    account-number: ${SIMULATION_ACCOUNT_NUMBER:A-1001}
+    account-holder: ${SIMULATION_ACCOUNT_HOLDER:Alice}
+    opening-balance: ${SIMULATION_OPENING_BALANCE:2000000.00}
