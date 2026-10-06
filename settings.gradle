@@ -1,0 +1,19 @@
+rootProject.name = 'finance-infrastructure'
+
+// 각 디렉터리를 Gradle 서브 프로젝트로 등록하여 gradle project로 인식된다.
+// 루트 project의 build.gradle에서는 각 서브 프로젝트들이 공통으로 사용할 플러그인 버전, JAVA 버전, 저장소등을 정의한다.
+// 이후 각 서브 프로젝트의 build.gradle에서 각 서비스가 Spring boot 실행 어플리케이션이라는 것을 선언하면서 해당 서브 프로젝트에서 추가적으로 필요한 플러그인을 추가한다.
+// 다만 root 프로젝트의 build.gradle에서 apply false로 선언한 플러그인들은 서브프로젝트에서 사용할수 없고, 서브프로젝트의 build.gradle에서 별도로 플러그인을 추가해야한다.
+// 이후 각 서브 프로젝트의 application.properties에서 필요한 설정정보들을 추가한다.
+
+// Gradle 서브프로젝트는 독립적으로 빌드할 수 있는 코드 단위이고, Spring Boot 애플리케이션은 실제로 JVM에서 실행되는 서버 단위이다.
+include(
+        'libs:common',
+        'services:bank-service',
+        'services:broker-service',
+        'services:dashboard-service',
+        'services:kftc-service',
+        'services:bok-service',
+        'services:krx-service',
+        'services:ksd-service'
+)

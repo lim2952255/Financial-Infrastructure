@@ -1,5 +1,9 @@
-simulator/**/.gradle/
-simulator/**/build/
-simulator/**/.idea/
-simulator/**/*.iml
+.gradle/
+**/build/
+.idea/
+*.iml
 .env
+.DS_Store
+.omx-state-locks.identity.json
+.omx/logs/
+.omx/state/
