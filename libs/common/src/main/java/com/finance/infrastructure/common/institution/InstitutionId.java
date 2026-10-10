@@ -4,7 +4,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * 기관의 종류가 아니라 실행 주체를 식별한다. 예: BANK_A, BANK_B, BOK.
+ * 현재 실행 주체를 식별한다. 예: BANK_A, BANK_B, BOK.
  */
 public record InstitutionId(String value) {
 
@@ -19,6 +19,7 @@ public record InstitutionId(String value) {
         }
     }
 
+    // Institution Id 생성
     public static InstitutionId of(String value) {
         return new InstitutionId(value);
     }
