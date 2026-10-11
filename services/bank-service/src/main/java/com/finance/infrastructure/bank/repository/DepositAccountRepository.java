@@ -17,4 +17,11 @@ public interface DepositAccountRepository extends JpaRepository<DepositAccount, 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select account from DepositAccount account where account.id = :accountId")
     Optional<DepositAccount> findByIdForUpdate(@Param("accountId") Long accountId);
+
+    // 은행 간 송수신처럼 계좌 하나만 변경할 때 계좌번호로 바로 잠금을 획득한다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select account from DepositAccount account where account.accountNumber = :accountNumber")
+    Optional<DepositAccount> findByAccountNumberForUpdate(
+            @Param("accountNumber") String accountNumber
+    );
 }

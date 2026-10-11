@@ -33,6 +33,10 @@ public class BankTransaction {
     @Column(nullable = false, unique = true, updatable = false, length = 64)
     private String requestId;
 
+    // KFTC가 발급한 지급지시 식별자. 은행 간 거래에서 중복 입금과 중복 처리를 방지한다.
+    @Column(unique = true, length = 64)
+    private String paymentInstructionId;
+
     @Column(nullable = false, updatable = false, length = 64)
     @Convert(converter = InstitutionIdConverter.class) // InstitutionId 레코드를 DB에 적절히 저장하기 위해 컨버터 설정
     @Getter(AccessLevel.NONE)
@@ -67,6 +71,16 @@ public class BankTransaction {
     private LocalDateTime createdAt;
 
     private LocalDateTime completedAt;
+
+    // 고객 이체 완료와 별개로 BOK의 은행 간 최종 결제가 끝난 시각이다.
+    private LocalDateTime settlementCompletedAt;
+
+    // 이 거래가 포함된 KFTC 청산주기와 BOK 결제배치를 추적한다.
+    @Column(length = 64)
+    private String clearingCycleId;
+
+    @Column(length = 64)
+    private String settlementBatchId;
 
     @Column(length = 255)
     private String failureReason; // 거래 실패 이유
@@ -117,6 +131,46 @@ public class BankTransaction {
         return new Money(amountValue);
     }
 
+    public void assignPaymentInstructionId(String paymentInstructionId) {
+        if (type == BankTransactionType.INTERNAL_TRANSFER) {
+            throw new IllegalStateException(
+                    "internal transfer cannot have a payment instruction id"
+            );
+        }
+        if (this.paymentInstructionId != null) {
+            throw new IllegalStateException("payment instruction id is already assigned");
+        }
+        this.paymentInstructionId = requirePaymentInstructionId(paymentInstructionId);
+    }
+
+    public void confirmInterbankSettlement(
+            String clearingCycleId,
+            String settlementBatchId
+    ) {
+        if (type == BankTransactionType.INTERNAL_TRANSFER) {
+            throw new IllegalStateException("internal transfer does not require settlement");
+        }
+        if (status != TransactionStatus.COMPLETED) {
+            throw new IllegalStateException("only completed transactions can be settled");
+        }
+
+        String normalizedCycleId = requireText(clearingCycleId, "clearing cycle id");
+        String normalizedBatchId = requireText(settlementBatchId, "settlement batch id");
+        if (settlementCompletedAt != null) {
+            if (!Objects.equals(this.clearingCycleId, normalizedCycleId)
+                    || !Objects.equals(this.settlementBatchId, normalizedBatchId)) {
+                throw new IllegalStateException(
+                        "interbank transaction was already settled by another batch"
+                );
+            }
+            return;
+        }
+
+        this.clearingCycleId = normalizedCycleId;
+        this.settlementBatchId = normalizedBatchId;
+        settlementCompletedAt = LocalDateTime.now();
+    }
+
     // AccountReference는 어떤 기관의 계좌인지 정보를 나타낸다.
     public AccountReference sender() {
         return new AccountReference(senderInstitutionId, senderAccountNumber);
@@ -131,6 +185,27 @@ public class BankTransaction {
         String normalized = requestId.trim();
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException("request id must not be blank");
+        }
+        return normalized;
+    }
+
+    private static String requirePaymentInstructionId(String paymentInstructionId) {
+        Objects.requireNonNull(
+                paymentInstructionId,
+                "payment instruction id must not be null"
+        );
+        String normalized = paymentInstructionId.trim();
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("payment instruction id must not be blank");
+        }
+        return normalized;
+    }
+
+    private static String requireText(String value, String fieldName) {
+        Objects.requireNonNull(value, fieldName + " must not be null");
+        String normalized = value.trim();
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " must not be blank");
         }
         return normalized;
     }
