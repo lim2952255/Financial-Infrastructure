@@ -1,0 +1,256 @@
+# 금융 인프라 시뮬레이션의 전체 실행 환경을 구성한다.
+#
+# 실행 흐름:
+# 브라우저 -> frontend -> dashboard -> Bank A/B/C, KFTC, BOK
+# 각 기관 서비스는 서로 DB를 공유하지 않고 전용 MySQL을 사용한다. 따라서 금융기관마다 자신들만의 DB를 독립적으로 사용한다.
+# 호스트에 공개되는 포트는 frontend 하나이며, 서비스 간 통신은 Compose 내부 DNS 이름을 사용한다.(내부 네트워크)
+name: finance-infrastructure
+
+services:
+  # 사용자가 접속하는 React 대시보드다. 빌드 결과를 Nginx가 80번 포트로 제공한다.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      # 기본 접속 주소는 http://localhost:5173이며 FINANCE_HTTP_PORT로 호스트 포트를 변경할 수 있다.
+      - "127.0.0.1:${FINANCE_HTTP_PORT:-5173}:80"
+    depends_on:
+      # 대시보드 집계 API가 준비된 이후에 프론트 컨테이너를 시작한다.
+      dashboard:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # 다섯 기관의 모니터링 정보를 한 응답으로 집계하고 이체·청산 요청을 중계하는 API다.
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: dashboard-service
+    environment:
+      SERVER_PORT: 8080
+      TZ: Asia/Seoul
+      # Compose 서비스명은 내부 DNS 호스트명이므로 컨테이너 간에는 localhost를 사용하지 않는다.
+      BANK_A_BASE_URL: http://bank-a:8080
+      BANK_B_BASE_URL: http://bank-b:8080
+      BANK_C_BASE_URL: http://bank-c:8080
+      KFTC_BASE_URL: http://kftc:8080
+      BOK_BASE_URL: http://bok:8080
+    healthcheck: &spring-healthcheck
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  # 세 은행은 같은 bank-service 이미지를 사용하고 기관 ID, DB, 데모 데이터만 다르게 주입한다.
+  bank-a:
+    build: &bank-build
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: bank-service
+    environment:
+      # 서비스 공통 실행 설정
+      SERVER_PORT: 8080
+      TZ: Asia/Seoul
+      # 같은 이미지가 어느 은행으로 동작할지를 결정한다.
+      INSTITUTION_ID: BANK_A
+      # 은행 간 이체의 지급지시는 KFTC로 전달한다.
+      KFTC_BASE_URL: http://kftc:8080
+      # 은행별 전용 DB에 연결하며 계정 정보는 .env로 덮어쓸 수 있다.
+      SPRING_DATASOURCE_URL: jdbc:mysql://bank-a-db:3306/${MYSQL_DATABASE:-finance}?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-finance}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-finance}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_OPEN_IN_VIEW: "false"
+      # 로컬 시연용 고객·계좌 두 개를 시작 시 자동으로생성한다. false면 자동 생성하지 않는다.
+      DEMO_SEED_ENABLED: "true"
+      DEMO_CUSTOMER_NAME: Sender
+      DEMO_ACCOUNT_NUMBER: A-001
+      DEMO_ACCOUNT_BALANCE: 100000
+      DEMO_SECONDARY_CUSTOMER_NAME: Sender Partner
+      DEMO_SECONDARY_ACCOUNT_NUMBER: A-002
+      DEMO_SECONDARY_ACCOUNT_BALANCE: 100000
+    depends_on:
+      # DB가 실제 쿼리를 받을 수 있는 상태가 된 뒤 은행 서비스를 시작한다.
+      bank-a-db:
+        condition: service_healthy
+    healthcheck: *spring-healthcheck
+
+  # Bank B: 공통 은행 이미지를 BANK_B 기관과 bank-b-db에 연결한다.
+  bank-b:
+    build: *bank-build
+    environment:
+      SERVER_PORT: 8080
+      TZ: Asia/Seoul
+      INSTITUTION_ID: BANK_B
+      KFTC_BASE_URL: http://kftc:8080
+      SPRING_DATASOURCE_URL: jdbc:mysql://bank-b-db:3306/${MYSQL_DATABASE:-finance}?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-finance}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-finance}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_OPEN_IN_VIEW: "false"
+      # 동일 은행 내 이체도 시연할 수 있도록 수신 측 데모 계좌를 두 개 준비한다.
+      DEMO_SEED_ENABLED: "true"
+      DEMO_CUSTOMER_NAME: Receiver
+      DEMO_ACCOUNT_NUMBER: B-001
+      DEMO_ACCOUNT_BALANCE: 100000
+      DEMO_SECONDARY_CUSTOMER_NAME: Receiver Partner
+      DEMO_SECONDARY_ACCOUNT_NUMBER: B-002
+      DEMO_SECONDARY_ACCOUNT_BALANCE: 100000
+    depends_on:
+      bank-b-db:
+        condition: service_healthy
+    healthcheck: *spring-healthcheck
+
+  # Bank C: KFTC에 참가하는 세 번째 은행으로 송신·수신 역할을 모두 시연할 수 있다.
+  bank-c:
+    build: *bank-build
+    environment:
+      SERVER_PORT: 8080
+      TZ: Asia/Seoul
+      INSTITUTION_ID: BANK_C
+      KFTC_BASE_URL: http://kftc:8080
+      SPRING_DATASOURCE_URL: jdbc:mysql://bank-c-db:3306/${MYSQL_DATABASE:-finance}?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-finance}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-finance}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_OPEN_IN_VIEW: "false"
+      # 첫 계좌는 송금 여유 잔액을, 두 번째 계좌는 수신 시연용 잔액을 가진다.
+      DEMO_SEED_ENABLED: "true"
+      DEMO_CUSTOMER_NAME: Third Sender
+      DEMO_ACCOUNT_NUMBER: C-001
+      DEMO_ACCOUNT_BALANCE: 100000
+      DEMO_SECONDARY_CUSTOMER_NAME: Third Receiver
+      DEMO_SECONDARY_ACCOUNT_NUMBER: C-002
+      DEMO_SECONDARY_ACCOUNT_BALANCE: 100000
+    depends_on:
+      bank-c-db:
+        condition: service_healthy
+    healthcheck: *spring-healthcheck
+
+  # 금융결제원(KFTC): 은행 간 지급지시를 중계하고 청산한 뒤 BOK에 최종 결제를 요청한다.
+  kftc:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: kftc-service
+    environment:
+      SERVER_PORT: 8080
+      TZ: Asia/Seoul
+      # 입금지시와 결제완료 통보를 실제 청산 참여은행에 전달하기 위한 주소다.
+      BANK_A_BASE_URL: http://bank-a:8080
+      BANK_B_BASE_URL: http://bank-b:8080
+      BANK_C_BASE_URL: http://bank-c:8080
+      # 기관별 순포지션의 최종 결제를 요청할 한국은행 주소다.
+      BOK_BASE_URL: http://bok:8080
+      SPRING_DATASOURCE_URL: jdbc:mysql://kftc-db:3306/${MYSQL_DATABASE:-finance}?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-finance}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-finance}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_OPEN_IN_VIEW: "false"
+      # 시작 시 Bank A/B/C를 KFTC 청산 참가기관으로 등록한다.
+      DEMO_SEED_ENABLED: "true"
+    depends_on:
+      # KFTC는 자체 DB뿐 아니라 지급지시·결제 대상 기관이 모두 준비된 후 시작한다.
+      kftc-db:
+        condition: service_healthy
+      bok:
+        condition: service_healthy
+      bank-a:
+        condition: service_healthy
+      bank-b:
+        condition: service_healthy
+      bank-c:
+        condition: service_healthy
+    healthcheck: *spring-healthcheck
+
+  # 한국은행(BOK): 참가은행의 당좌예금 계좌를 관리하고 KFTC가 요청한 최종 결제를 수행한다.
+  bok:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: bok-service
+    environment:
+      SERVER_PORT: 8080
+      TZ: Asia/Seoul
+      SPRING_DATASOURCE_URL: jdbc:mysql://bok-db:3306/${MYSQL_DATABASE:-finance}?serverTimezone=Asia/Seoul&useUnicode=true&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-finance}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-finance}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_OPEN_IN_VIEW: "false"
+      # 시작 시 Bank A/B/C의 결제용 당좌예금 계좌와 초기 잔액을 생성한다.
+      DEMO_SEED_ENABLED: "true"
+    depends_on:
+      bok-db:
+        condition: service_healthy
+    healthcheck: *spring-healthcheck
+
+  # 기관별 데이터 격리를 보여주기 위해 서비스마다 독립된 MySQL과 영속 볼륨을 둔다.
+  # bank-a-db에서 공통 환경변수와 healthcheck를 anchor로 선언하고 나머지 DB가 재사용한다.
+  bank-a-db:
+    image: mysql:8.4
+    environment: &mysql-environment
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-finance-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-finance}
+      MYSQL_USER: ${MYSQL_USER:-finance}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-finance}
+      TZ: Asia/Seoul
+    volumes:
+      # 컨테이너를 재생성해도 데이터가 유지된다. 초기화하려면 볼륨을 별도로 제거해야 한다.
+      - bank-a-data:/var/lib/mysql
+    healthcheck: &mysql-healthcheck
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  # Bank B 전용 DB
+  bank-b-db:
+    image: mysql:8.4
+    environment: *mysql-environment
+    volumes:
+      - bank-b-data:/var/lib/mysql
+    healthcheck: *mysql-healthcheck
+
+  # Bank C 전용 DB
+  bank-c-db:
+    image: mysql:8.4
+    environment: *mysql-environment
+    volumes:
+      - bank-c-data:/var/lib/mysql
+    healthcheck: *mysql-healthcheck
+
+  # KFTC의 지급지시·청산주기·결제요청을 저장하는 전용 DB
+  kftc-db:
+    image: mysql:8.4
+    environment: *mysql-environment
+    volumes:
+      - kftc-data:/var/lib/mysql
+    healthcheck: *mysql-healthcheck
+
+  # BOK의 참가기관·당좌예금·결제배치·결제원장을 저장하는 전용 DB
+  bok-db:
+    image: mysql:8.4
+    environment: *mysql-environment
+    volumes:
+      - bok-data:/var/lib/mysql
+    healthcheck: *mysql-healthcheck
+
+# 아래 named volume은 `docker compose down`만으로 삭제되지 않아 재실행 시 데이터를 보존한다.
+# 완전한 데모 초기화가 필요한 경우에만 `docker compose down -v`로 함께 제거한다.
+volumes:
+  bank-a-data:
+  bank-b-data:
+  bank-c-data:
+  kftc-data:
+  bok-data:

@@ -1,50 +1,50 @@
 package com.finance.infrastructure.common.money;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Objects;
 
 /**
- * 금액과 통화를 함께 전달하기 위한 기관 중립적 값 객체다.
- * 반올림, 허용 부호, 한도 같은 업무 규칙은 각 기관이 결정한다.
+ * 시스템에서 사용하는 원화 금액을 표현한다.
  */
-public record Money(BigDecimal amount, CurrencyCode currency) {
+public record Money(BigDecimal amount) {
 
     public Money {
         Objects.requireNonNull(amount, "amount must not be null");
-        Objects.requireNonNull(currency, "currency must not be null");
         amount = normalize(amount);
     }
 
-    public static Money of(BigDecimal amount, String currencyCode) {
-        return new Money(amount, CurrencyCode.of(currencyCode));
+    public static Money of(BigDecimal amount) {
+        return new Money(amount);
     }
 
-    public static Money zero(CurrencyCode currency) {
-        return new Money(BigDecimal.ZERO, currency);
+    public static Money zero() {
+        return new Money(BigDecimal.ZERO);
     }
 
+    // Record는 불변객체이기 때문에 Money의 amount를 수정하기 위해서는 새로운 객체를 생성해야 한다.
     public Money add(Money other) {
-        requireSameCurrency(other);
-        return new Money(amount.add(other.amount), currency);
+        Objects.requireNonNull(other, "other money must not be null");
+        return new Money(amount.add(other.amount));
     }
 
     public Money subtract(Money other) {
-        requireSameCurrency(other);
-        return new Money(amount.subtract(other.amount), currency);
+        Objects.requireNonNull(other, "other money must not be null");
+        return new Money(amount.subtract(other.amount));
     }
 
     public boolean isNegative() {
         return amount.signum() < 0;
     }
 
-    private void requireSameCurrency(Money other) {
-        Objects.requireNonNull(other, "other money must not be null");
-        if (!currency.equals(other.currency)) {
-            throw new IllegalArgumentException("money operations require the same currency");
-        }
-    }
-
     private static BigDecimal normalize(BigDecimal value) {
-        return value.signum() == 0 ? BigDecimal.ZERO : value.stripTrailingZeros();
+        try {
+            return value.setScale(0, RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException exception) {
+            throw new IllegalArgumentException(
+                    "money must not contain decimal places",
+                    exception
+            );
+        }
     }
 }
