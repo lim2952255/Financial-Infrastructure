@@ -1,0 +1,26 @@
+# SERVICE 인자로 선택한 Spring Boot 모듈을 빌드하는 공용 이미지 정의다.
+FROM gradle:9.7.1-jdk17 AS build
+
+ARG SERVICE
+WORKDIR /workspace
+
+COPY . .
+
+RUN gradle ":services:${SERVICE}:bootJar" --no-daemon \
+    && JAR_FILE="$(find "services/${SERVICE}/build/libs" -type f -name '*.jar' ! -name '*-plain.jar' -print -quit)" \
+    && test -n "$JAR_FILE" \
+    && cp "$JAR_FILE" /workspace/app.jar
+
+FROM eclipse-temurin:17-jre-jammy
+
+WORKDIR /app
+
+RUN groupadd --system spring \
+    && useradd --system --gid spring --no-create-home spring
+
+COPY --from=build /workspace/app.jar /app/app.jar
+
+USER spring:spring
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

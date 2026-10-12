@@ -84,6 +84,14 @@ public class SettlementSubmission {
         clearingCycle.settle();
     }
 
+    // 순포지션이 모두 0원이면 BOK에 보낼 자금 결제 요청 없이 청산주기를 완료한다.
+    public void settleWithoutSubmission() {
+        requireStatus(SettlementSubmissionStatus.CREATED);
+        status = SettlementSubmissionStatus.SETTLED;
+        settledAt = LocalDateTime.now();
+        clearingCycle.settle();
+    }
+
     public void reject(String reason) {
         requireStatus(SettlementSubmissionStatus.SUBMITTED);
         rejectionReason = requireText(reason, "rejection reason");

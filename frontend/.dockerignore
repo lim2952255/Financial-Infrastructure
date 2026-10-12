@@ -1,0 +1,6 @@
+# 프론트 이미지 안에서 다시 생성되는 의존성과 빌드 결과를 제외한다.
+node_modules
+dist
+.git
+.DS_Store
+npm-debug.log*

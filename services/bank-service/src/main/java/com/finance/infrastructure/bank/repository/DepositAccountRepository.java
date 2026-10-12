@@ -7,9 +7,20 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface DepositAccountRepository extends JpaRepository<DepositAccount, Long> {
+
+    boolean existsByAccountNumber(String accountNumber);
+
+    @Query("""
+            select account
+            from DepositAccount account
+            join fetch account.customer
+            order by account.id
+            """)
+    List<DepositAccount> findAllForMonitoring();
 
     @Query("select account.id from DepositAccount account where account.accountNumber = :accountNumber")
     Optional<Long> findIdByAccountNumber(@Param("accountNumber") String accountNumber);

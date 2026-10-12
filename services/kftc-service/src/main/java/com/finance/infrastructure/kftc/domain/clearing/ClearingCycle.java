@@ -119,8 +119,10 @@ public class ClearingCycle {
 
     private static List<NetPosition> requireBalancedPositions(List<NetPosition> positions) {
         Objects.requireNonNull(positions, "net positions must not be null");
-        if (positions.size() < 2) {
-            throw new IllegalArgumentException("clearing cycle requires at least two positions");
+        // 모든 지급지시가 서로 상계되어 순포지션이 0원이면 BOK에서 움직일 자금이 없다.
+        // 이 경우 빈 포지션도 유효한 청산 결과로 기록한다.
+        if (positions.size() == 1) {
+            throw new IllegalArgumentException("clearing cycle cannot have only one position");
         }
 
         Set<InstitutionId> institutionIds = new HashSet<>();

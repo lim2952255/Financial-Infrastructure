@@ -13,6 +13,8 @@ import java.util.Optional;
 
 public interface BankTransactionRepository extends JpaRepository<BankTransaction, Long> {
 
+    List<BankTransaction> findAllByOrderByIdAsc();
+
     Optional<BankTransaction> findByRequestId(String requestId);
 
     Optional<BankTransaction> findByPaymentInstructionId(String paymentInstructionId);

@@ -84,18 +84,25 @@ public class ClearingService {
         SettlementSubmission submission = submissionRepository.save(
                 new SettlementSubmission(deterministicSubmissionId(cycleId), cycle)
         );
-        // 이후 새로 생성한 settlementSubmission을 BOK에 전송하기 떄문에 submission의 상태를 SUBMIT으로 변경한다.
-        submission.submit();
+        if (cycle.getPositions().isEmpty()) {
+            // 기관별 순포지션이 모두 0원이면 중앙은행 당좌예금에서 이동할 자금이 없다.
+            submission.settleWithoutSubmission();
+        } else {
+            // 이후 새로 생성한 settlementSubmission을 BOK에 전송하기 떄문에 submission의 상태를 SUBMIT으로 변경한다.
+            submission.submit();
 
-        // BOK에게 현재 결제요청정보랑 청산주기정보를 전송하고, 결제결과를 응답받는다.
-        SettlementResponse settlementResponse = bokClient.settle(submission, cycle);
-        // 만약 결제결과의 상태가 SETTLED가 아니라면, BOK에서 결제에 실패했다는 의미이기 때문에 예외를 발생시킨다.
-        if (!"SETTLED".equals(settlementResponse.status())) {
-            throw new IllegalStateException("BOK did not complete the settlement");
+            // BOK에게 현재 결제요청정보랑 청산주기정보를 전송하고, 결제결과를 응답받는다.
+            SettlementResponse settlementResponse = bokClient.settle(submission, cycle);
+            // 만약 결제결과의 상태가 SETTLED가 아니라면, BOK에서 결제에 실패했다는 의미이기 때문에 예외를 발생시킨다.
+            if (!"SETTLED".equals(settlementResponse.status())) {
+                throw new IllegalStateException("BOK did not complete the settlement");
+            }
+
+            // 결제가 완료되면 submission의 상태와 청산주기의 상태를 SETTLE로 변경한다.
+            submission.settle();
         }
 
-        // 결제가 완료되면 submission의 상태와 instruction들의 상태를 SETTLE로 변경한다.
-        submission.settle();
+        // 결제가 필요 없거나 BOK 결제가 완료되면 지급지시를 최종 상태로 변경한다.
         instructions.forEach(PaymentInstruction::settle);
         // 참여은행들에게 결제성공결과를 알린다.
         notifyParticipatingBanks(cycle, submission, instructions);
